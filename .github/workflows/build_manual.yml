@@ -18,7 +18,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.x" # 使用较新的稳定版
+          channel: 'master' # 关键：切换到 master 分支以获取最新 SDK
           cache: true
 
       - name: Get Dependencies
@@ -42,38 +42,3 @@ jobs:
           name: android-apks
           path: |
             simple_live_app/build/app/outputs/flutter-apk/*.apk
-
-  # === Windows 编译任务 ===
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.24.x"
-          cache: true
-
-      - name: Enable Desktop
-        run: flutter config --enable-windows-desktop
-
-      - name: Get Dependencies
-        run: |
-          cd simple_live_app
-          flutter pub get
-
-      - name: Install flutter_distributor
-        run: dart pub global activate flutter_distributor
-
-      # 构建 Windows 免安装压缩包
-      - name: Build Windows
-        run: |
-          cd simple_live_app
-          flutter build windows --release
-
-      - name: Upload Windows
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-app
-          path: |
-            simple_live_app/build/windows/runner/Release/*
