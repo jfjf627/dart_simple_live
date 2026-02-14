@@ -1,0 +1,79 @@
+name: Manual Build (No Secrets)
+
+on:
+  workflow_dispatch: # 允许手动点击触发
+
+jobs:
+  # === Android 编译任务 ===
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.x" # 使用较新的稳定版
+          cache: true
+
+      - name: Get Dependencies
+        run: |
+          cd simple_live_app
+          flutter pub get
+
+      # 关键修改：尝试构建 Release 包。
+      # 如果原项目的 build.gradle 强行检查签名，这一步可能会失败。
+      # 如果失败，请将下面的 --release 改为 --debug
+      - name: Build APK
+        run: |
+          cd simple_live_app
+          # 尝试以 release 模式构建，但为了通过编译，可能需要移除 gradle 中的签名配置
+          # 这里为了保险，我们构建 split-per-abi 的包
+          flutter build apk --release --split-per-abi --no-sound-null-safety || flutter build apk --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: |
+            simple_live_app/build/app/outputs/flutter-apk/*.apk
+
+  # === Windows 编译任务 ===
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.x"
+          cache: true
+
+      - name: Enable Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Get Dependencies
+        run: |
+          cd simple_live_app
+          flutter pub get
+
+      - name: Install flutter_distributor
+        run: dart pub global activate flutter_distributor
+
+      # 构建 Windows 免安装压缩包
+      - name: Build Windows
+        run: |
+          cd simple_live_app
+          flutter build windows --release
+
+      - name: Upload Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-app
+          path: |
+            simple_live_app/build/windows/runner/Release/*
